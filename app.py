@@ -8,14 +8,14 @@ def analyze_plant(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     total_pixels = frame.shape[0] * frame.shape[1]
 
-    # HSV ranges
-    lower_green = np.array([35, 40, 40], dtype=np.uint8)
-    upper_green = np.array([90, 255, 255], dtype=np.uint8)
+    # Adjusted HSV ranges for better real-world lighting (shadows, indoor light)
+    lower_green = np.array([30, 25, 25], dtype=np.uint8)
+    upper_green = np.array([95, 255, 255], dtype=np.uint8)
 
-    lower_yellow = np.array([15, 40, 40], dtype=np.uint8)
-    upper_yellow = np.array([35, 255, 255], dtype=np.uint8)
+    lower_yellow = np.array([15, 30, 30], dtype=np.uint8)
+    upper_yellow = np.array([30, 255, 255], dtype=np.uint8)
 
-    lower_brown = np.array([5, 50, 20], dtype=np.uint8)
+    lower_brown = np.array([5, 30, 20], dtype=np.uint8)
     upper_brown = np.array([20, 255, 200], dtype=np.uint8)
 
     # Masks
@@ -109,6 +109,11 @@ with col1:
 if image_file is not None:
     # Convert uploaded image to OpenCV format
     image = Image.open(image_file)
+    
+    # Resize image to prevent Streamlit Cloud memory crashes on high-res mobile photos
+    max_size = (800, 800)
+    image.thumbnail(max_size, Image.Resampling.LANCZOS)
+    
     frame = np.array(image)
     # Convert RGB to BGR for OpenCV processing
     frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
