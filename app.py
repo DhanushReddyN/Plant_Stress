@@ -3,9 +3,6 @@ import cv2
 import numpy as np
 from PIL import Image
 
-def calculate_percentage(mask, total_pixels):
-    pixels = cv2.countNonZero(mask)
-    return (pixels / total_pixels) * 100
 
 def analyze_plant(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -32,13 +29,22 @@ def analyze_plant(frame):
     yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
     brown_mask = cv2.morphologyEx(brown_mask, cv2.MORPH_OPEN, kernel)
 
-    # Percentages
-    green_pct = calculate_percentage(green_mask, total_pixels)
-    yellow_pct = calculate_percentage(yellow_mask, total_pixels)
-    brown_pct = calculate_percentage(brown_mask, total_pixels)
+    # Calculate raw pixels
+    green_pixels = cv2.countNonZero(green_mask)
+    yellow_pixels = cv2.countNonZero(yellow_mask)
+    brown_pixels = cv2.countNonZero(brown_mask)
+    total_plant_pixels = green_pixels + yellow_pixels + brown_pixels
 
-    # Leaf coverage = total visible plant-like area
-    leaf_coverage = green_pct + yellow_pct + brown_pct
+    # Leaf coverage = total visible plant-like area relative to whole image
+    leaf_coverage = (total_plant_pixels / total_pixels) * 100
+
+    # Percentages relative to the plant itself (not the whole image)
+    if total_plant_pixels > 0:
+        green_pct = (green_pixels / total_plant_pixels) * 100
+        yellow_pct = (yellow_pixels / total_plant_pixels) * 100
+        brown_pct = (brown_pixels / total_plant_pixels) * 100
+    else:
+        green_pct = yellow_pct = brown_pct = 0.0
 
     # Dryness score: more weight to brown, some to yellow
     dryness_score = (brown_pct * 0.7) + (yellow_pct * 0.3)
@@ -47,11 +53,15 @@ def analyze_plant(frame):
     stress_score = max(0, min(100, (yellow_pct * 1.2) + (brown_pct * 1.8) - (green_pct * 0.5) + 30))
 
     # Health classification
-    if green_pct >= 30 and yellow_pct < 10 and brown_pct < 5:
+    if leaf_coverage < 0.5: # Less than 0.5% of the image is plant
+        health = "No Plant Detected"
+        stress = "N/A"
+        color = (128, 128, 128)
+    elif green_pct >= 60 and brown_pct < 10:
         health = "Healthy"
         stress = "Low Stress"
         color = (0, 255, 0)
-    elif green_pct >= 20 and brown_pct < 15:
+    elif green_pct >= 30 and brown_pct < 25:
         health = "Moderate"
         stress = "Medium Stress"
         color = (0, 255, 255)
